@@ -55,6 +55,7 @@ mem.close()
 - **命名空间统计** — 通过 `namespace_stats()` 查看按命名空间的记忆分布
 
 ### 集成
+- **Claude Code** — 支持通过插件市场或手动 MCP 配置接入 Claude Code
 - **MCP Server** — `engram-mcp` CLI 将 Engram 暴露为 MCP 工具服务器（Claude Desktop、Cursor 等）
 - **REST API** — `engram-api` CLI 启动 FastAPI HTTP 服务，提供 12 个端点
 - **LangChain** — `EngramMemory` 实现 `BaseMemory`（save_context / load_memory_variables）
@@ -89,6 +90,24 @@ async def my_llm(prompt):
 mem = AgentMemory(db_path="./memory.db", llm=CallableLLMProvider(my_llm))
 ids = mem.smart_remember("用户更喜欢 Python 而不是 JavaScript")
 ```
+
+### Claude Code
+
+```bash
+# 方式一：从 Claude Code 插件市场安装
+claude plugin marketplace add engram-ai/engram
+claude plugin install engram
+
+# 方式二：手动 MCP 配置
+pip install engram[mcp]
+claude mcp add engram -- engram-mcp --db-path ./memory.db
+
+# 方式三：启用 OpenAI 嵌入，获得混合搜索能力
+claude mcp add engram -- engram-mcp --db-path ./memory.db --embedding openai
+```
+
+安装后，Claude Code 自动获得跨会话的持久化记忆能力，包含 6 个工具：
+`engram_remember`、`engram_recall`、`engram_smart_remember`、`engram_forget`、`engram_list`、`engram_stats`。
 
 ### MCP Server
 

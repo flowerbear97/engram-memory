@@ -55,6 +55,7 @@ mem.close()
 - **Namespace statistics** — per-namespace memory distribution via `namespace_stats()`
 
 ### Integrations
+- **Claude Code** — available as a Claude Code plugin via marketplace or manual MCP setup
 - **MCP Server** — `engram-mcp` CLI exposes Engram as an MCP tool server (Claude Desktop, Cursor, etc.)
 - **REST API** — `engram-api` CLI starts a FastAPI HTTP service with 12 endpoints
 - **LangChain** — `EngramMemory` implements `BaseMemory` (save_context / load_memory_variables)
@@ -89,6 +90,24 @@ async def my_llm(prompt):
 mem = AgentMemory(db_path="./memory.db", llm=CallableLLMProvider(my_llm))
 ids = mem.smart_remember("User prefers Python over JavaScript")
 ```
+
+### Claude Code
+
+```bash
+# Option 1: Install from Claude Code plugin marketplace
+claude plugin marketplace add engram-ai/engram
+claude plugin install engram
+
+# Option 2: Manual MCP setup
+pip install engram[mcp]
+claude mcp add engram -- engram-mcp --db-path ./memory.db
+
+# Option 3: With OpenAI embeddings for hybrid search
+claude mcp add engram -- engram-mcp --db-path ./memory.db --embedding openai
+```
+
+Once installed, Claude Code automatically gains persistent memory across sessions with 6 tools:
+`engram_remember`, `engram_recall`, `engram_smart_remember`, `engram_forget`, `engram_list`, `engram_stats`.
 
 ### MCP Server
 
