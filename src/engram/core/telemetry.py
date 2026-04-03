@@ -26,7 +26,7 @@ Usage::
     with tracer.start_as_current_span("my_operation"):
         ...
 
-Requires: pip install engram[telemetry]
+Requires: pip install engram-memory[telemetry]
 """
 
 from __future__ import annotations

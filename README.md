@@ -5,7 +5,7 @@
 Lightweight, framework-agnostic memory layer for AI agents. Built on SQLite + sqlite-vec + FTS5 — no external services required.
 
 ```bash
-pip install engram
+pip install engram-memory
 ```
 
 ```python
@@ -22,7 +22,7 @@ mem.close()
 
 | | Engram | Mem0 | Letta | Graphiti |
 |---|---|---|---|---|
-| Install | `pip install` | `pip install` | Docker + Server | pip + Neo4j |
+| Install | `pip install engram-memory` | `pip install` | Docker + Server | pip + Neo4j |
 | External Deps | None | Vector DB + LLM | PG + Server + LLM | Graph DB + LLM |
 | Framework Lock-in | None | None | Letta runtime | None |
 | Memory Lifecycle | Built-in | None | Agent self-managed | Partial |
@@ -95,11 +95,11 @@ ids = mem.smart_remember("User prefers Python over JavaScript")
 
 ```bash
 # Option 1: Install from Claude Code plugin marketplace
-claude plugin marketplace add engram-ai/engram
+claude plugin marketplace add flowerbear97/engram-memory
 claude plugin install engram
 
 # Option 2: Manual MCP setup
-pip install engram[mcp]
+pip install engram-memory[mcp]
 claude mcp add engram -- engram-mcp --db-path ./memory.db
 
 # Option 3: With OpenAI embeddings for hybrid search
@@ -175,15 +175,15 @@ await worker.stop()
 ## Installation
 
 ```bash
-pip install engram              # core
-pip install engram[openai]      # + OpenAI embeddings
-pip install engram[local]       # + sentence-transformers
-pip install engram[mcp]         # + MCP server
-pip install engram[api]         # + REST API (FastAPI)
-pip install engram[langchain]   # + LangChain adapter
-pip install engram[llamaindex]  # + LlamaIndex adapter
-pip install engram[telemetry]   # + OpenTelemetry
-pip install engram[all]         # everything
+pip install engram-memory              # core
+pip install engram-memory[openai]      # + OpenAI embeddings
+pip install engram-memory[local]       # + sentence-transformers
+pip install engram-memory[mcp]         # + MCP server
+pip install engram-memory[api]         # + REST API (FastAPI)
+pip install engram-memory[langchain]   # + LangChain adapter
+pip install engram-memory[llamaindex]  # + LlamaIndex adapter
+pip install engram-memory[telemetry]   # + OpenTelemetry
+pip install engram-memory[all]         # everything
 ```
 
 ## Architecture
