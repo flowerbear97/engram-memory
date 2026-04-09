@@ -6,6 +6,7 @@ then fuses results via RRF and deduplicates.
 
 from __future__ import annotations
 
+import asyncio
 import math
 from datetime import datetime, timezone
 
@@ -78,25 +79,31 @@ class RetrievalEngine:
         ranked_lists: list[list[ScoredMemory]] = []
         weights: list[float] = []
 
-        # 1. Vector search (skip if using NullEmbeddingProvider)
+        # 1. Vector + Keyword search in parallel
         use_vector = not isinstance(self._embedder, NullEmbeddingProvider)
-        if use_vector:
-            query_embedding = await self._embedder.embed_text(query)
-            vector_results = await self._store.vector_search(
-                embedding=query_embedding,
-                filters=filters,
-                top_k=top_k * 3,  # over-fetch for fusion
-            )
-            if vector_results:
-                ranked_lists.append(vector_results)
-                weights.append(self._vector_weight)
 
-        # 2. Keyword search (always attempted)
-        keyword_results = await self._store.keyword_search(
-            query=query,
-            filters=filters,
-            top_k=top_k * 3,
-        )
+        if use_vector:
+            # Compute embedding first (keyword search doesn't need it)
+            query_embedding = await self._embedder.embed_text(query)
+            # Run vector and keyword search concurrently
+            vector_task = self._store.vector_search(
+                embedding=query_embedding, filters=filters, top_k=top_k * 3,
+            )
+            keyword_task = self._store.keyword_search(
+                query=query, filters=filters, top_k=top_k * 3,
+            )
+            vector_results, keyword_results = await asyncio.gather(
+                vector_task, keyword_task,
+            )
+        else:
+            vector_results = []
+            keyword_results = await self._store.keyword_search(
+                query=query, filters=filters, top_k=top_k * 3,
+            )
+
+        if vector_results:
+            ranked_lists.append(vector_results)
+            weights.append(self._vector_weight)
         if keyword_results:
             ranked_lists.append(keyword_results)
             weights.append(self._keyword_weight)
@@ -105,10 +112,10 @@ class RetrievalEngine:
         if not ranked_lists:
             return []
 
-        # 3. RRF fusion
+        # 2. RRF fusion
         fused = reciprocal_rank_fusion(ranked_lists, weights=weights)
 
-        # 4. Recency boost
+        # 3. Recency boost
         if self._recency_weight > 0:
             fused = apply_recency_boost(
                 fused,
@@ -116,16 +123,17 @@ class RetrievalEngine:
                 weight=self._recency_weight,
             )
 
-        # 5. Deduplication
+        # 4. Deduplication
         fused = deduplicate(fused, threshold=self._dedup_threshold)
 
-        # 6. Top-K truncation
+        # 5. Top-K truncation
         results = fused[:top_k]
 
-        # Touch accessed memories (update access stats)
-        for scored in results:
+        # 6. Batch-touch accessed memories (single transaction)
+        touch_ids = [scored.memory.id for scored in results]
+        if touch_ids:
             try:
-                await self._store.touch(scored.memory.id)
+                await self._store.batch_touch(touch_ids)
             except Exception:
                 pass  # non-critical
 
@@ -154,23 +162,23 @@ class RetrievalEngine:
         use_vector = not isinstance(self._embedder, NullEmbeddingProvider)
         rrf_k = 60
 
-        # 1. Run searches
-        vector_results: list[ScoredMemory] = []
-        keyword_results: list[ScoredMemory] = []
-
+        # 1. Run searches in parallel
         if use_vector:
             query_embedding = await self._embedder.embed_text(query)
-            vector_results = await self._store.vector_search(
-                embedding=query_embedding,
-                filters=filters,
-                top_k=top_k * 3,
+            vector_task = self._store.vector_search(
+                embedding=query_embedding, filters=filters, top_k=top_k * 3,
             )
-
-        keyword_results = await self._store.keyword_search(
-            query=query,
-            filters=filters,
-            top_k=top_k * 3,
-        )
+            keyword_task = self._store.keyword_search(
+                query=query, filters=filters, top_k=top_k * 3,
+            )
+            vector_results, keyword_results = await asyncio.gather(
+                vector_task, keyword_task,
+            )
+        else:
+            vector_results = []
+            keyword_results = await self._store.keyword_search(
+                query=query, filters=filters, top_k=top_k * 3,
+            )
 
         # 2. Build rank maps
         vector_rank_map: dict[str, int] = {}

@@ -73,6 +73,15 @@ class BaseMemoryStore(ABC):
     async def touch(self, memory_id: str) -> None:
         """Update last_accessed_at and increment access_count."""
 
+    async def batch_touch(self, memory_ids: list[str]) -> None:
+        """Batch-update last_accessed_at and access_count for multiple memories.
+
+        Default implementation loops over touch(); backends should override
+        with a single-query implementation for efficiency.
+        """
+        for mid in memory_ids:
+            await self.touch(mid)
+
     @abstractmethod
     async def delete(self, memory_id: str, hard: bool = False) -> bool:
         """Delete a memory.
@@ -104,6 +113,43 @@ class BaseMemoryStore(ABC):
     @abstractmethod
     async def stats(self) -> StoreStats:
         """Return aggregate statistics about the store."""
+
+    async def namespace_stats(
+        self, namespace: str | None = None
+    ) -> dict[str, object]:
+        """Return namespace-level statistics via SQL aggregation.
+
+        Override in backends for efficient implementation. Default
+        falls back to list_memories (slow).
+        """
+        from neuragram.core.models import MemoryStatus
+
+        if namespace is not None:
+            filters = MemoryFilter(
+                namespace=namespace,
+                statuses=[MemoryStatus.ACTIVE],
+            )
+            memories = await self.list_memories(filters, limit=10000)
+            type_counts: dict[str, int] = {}
+            for mem in memories:
+                t = mem.memory_type.value
+                type_counts[t] = type_counts.get(t, 0) + 1
+            return {
+                "namespace": namespace,
+                "total_memories": len(memories),
+                "memory_types": type_counts,
+            }
+
+        filters = MemoryFilter(statuses=[MemoryStatus.ACTIVE])
+        memories = await self.list_memories(filters, limit=10000)
+        ns_counts: dict[str, int] = {}
+        for mem in memories:
+            ns_counts[mem.namespace] = ns_counts.get(mem.namespace, 0) + 1
+        return {
+            "namespaces": ns_counts,
+            "total_namespaces": len(ns_counts),
+            "total_memories": len(memories),
+        }
 
     @abstractmethod
     async def ping(self) -> bool:

@@ -9,6 +9,7 @@ Hierarchy:
 
 from __future__ import annotations
 
+import asyncio
 from abc import ABC, abstractmethod
 
 from neuragram.core.exceptions import BackendNotAvailableError, EmbeddingError
@@ -79,15 +80,25 @@ class LocalEmbeddingProvider(BaseEmbeddingProvider):
 
     async def embed_text(self, text: str) -> list[float]:
         try:
-            vector = self._model.encode(text, normalize_embeddings=True)
+            loop = asyncio.get_event_loop()
+            vector = await loop.run_in_executor(
+                None, lambda: self._model.encode(text, normalize_embeddings=True)
+            )
             return vector.tolist()
+        except EmbeddingError:
+            raise
         except Exception as exc:
             raise EmbeddingError(f"Local embedding failed: {exc}") from exc
 
     async def embed_batch(self, texts: list[str]) -> list[list[float]]:
         try:
-            vectors = self._model.encode(texts, normalize_embeddings=True)
+            loop = asyncio.get_event_loop()
+            vectors = await loop.run_in_executor(
+                None, lambda: self._model.encode(texts, normalize_embeddings=True)
+            )
             return [v.tolist() for v in vectors]
+        except EmbeddingError:
+            raise
         except Exception as exc:
             raise EmbeddingError(f"Local batch embedding failed: {exc}") from exc
 

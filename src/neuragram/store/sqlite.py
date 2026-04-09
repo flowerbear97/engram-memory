@@ -15,7 +15,10 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
+import sqlite3
 import struct
+import time
 from collections import OrderedDict
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta, timezone
@@ -231,6 +234,11 @@ class SQLiteMemoryStore(BaseMemoryStore):
         self._cache_max_size = cache_size
         self._cache: OrderedDict[str, Memory] = OrderedDict()
 
+        # TTL cache for stats() — avoid repeated full-table aggregation
+        self._stats_cache: StoreStats | None = None
+        self._stats_cache_time: float = 0.0
+        self._stats_cache_ttl = 30.0  # seconds
+
     def _ensure_open(self) -> aiosqlite.Connection:
         if self._closed or self._db is None:
             raise StoreError("Store is closed")
@@ -357,41 +365,37 @@ class SQLiteMemoryStore(BaseMemoryStore):
         ``batch_insert()``.  Callers are responsible for holding
         ``_write_lock`` and calling ``db.commit()`` afterwards.
         """
-        # Check for duplicate ID
-        cursor = await db.execute(
-            "SELECT 1 FROM memories WHERE id = ?", (memory.id,)
-        )
-        if await cursor.fetchone():
-            raise StoreError(f"Memory with id {memory.id} already exists")
-
         now = _utcnow()
-        await db.execute(
-            """INSERT INTO memories
-               (id, content, memory_type, status, user_id, agent_id, namespace,
-                tags, metadata, confidence, importance, version, source,
-                expires_at, created_at, updated_at, last_accessed_at, access_count)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (
-                memory.id,
-                memory.content,
-                memory.memory_type.value,
-                memory.status.value,
-                memory.user_id,
-                memory.agent_id,
-                memory.namespace,
-                json.dumps(memory.tags),
-                json.dumps(memory.metadata),
-                memory.confidence,
-                memory.importance,
-                memory.version,
-                memory.source,
-                _dt_to_str(memory.expires_at) if memory.expires_at else None,
-                _dt_to_str(memory.created_at),
-                _dt_to_str(now),
-                _dt_to_str(now),
-                memory.access_count,
-            ),
-        )
+        try:
+            await db.execute(
+                """INSERT INTO memories
+                   (id, content, memory_type, status, user_id, agent_id, namespace,
+                    tags, metadata, confidence, importance, version, source,
+                    expires_at, created_at, updated_at, last_accessed_at, access_count)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    memory.id,
+                    memory.content,
+                    memory.memory_type.value,
+                    memory.status.value,
+                    memory.user_id,
+                    memory.agent_id,
+                    memory.namespace,
+                    json.dumps(memory.tags),
+                    json.dumps(memory.metadata),
+                    memory.confidence,
+                    memory.importance,
+                    memory.version,
+                    memory.source,
+                    _dt_to_str(memory.expires_at) if memory.expires_at else None,
+                    _dt_to_str(memory.created_at),
+                    _dt_to_str(now),
+                    _dt_to_str(now),
+                    memory.access_count,
+                ),
+            )
+        except sqlite3.IntegrityError as exc:
+            raise StoreError(f"Memory with id {memory.id} already exists") from exc
 
         # FTS index
         if self._fts_available:
@@ -534,8 +538,6 @@ class SQLiteMemoryStore(BaseMemoryStore):
         FTS5 treats certain characters as operators. We strip them and
         split the query into individual tokens joined by OR.
         """
-        import re
-
         # Remove FTS5 special characters
         cleaned = re.sub(r'[^\w\s]', ' ', query, flags=re.UNICODE)
         tokens = cleaned.split()
@@ -707,10 +709,15 @@ class SQLiteMemoryStore(BaseMemoryStore):
             )
 
         await db.commit()
-        self._cache_invalidate(memory_id)
 
-        updated = await self.get(memory_id)
-        assert updated is not None
+        # Fetch the updated row directly (avoid extra get() → lock reentry)
+        cursor = await db.execute(
+            "SELECT * FROM memories WHERE id = ?", (memory_id,)
+        )
+        row = await cursor.fetchone()
+        assert row is not None
+        updated = _row_to_memory(row)
+        self._cache_put(updated)
         return updated
 
     async def touch(self, memory_id: str) -> None:
@@ -726,6 +733,24 @@ class SQLiteMemoryStore(BaseMemoryStore):
                 raise MemoryNotFoundError(memory_id)
             await db.commit()
             self._cache_invalidate(memory_id)
+
+    async def batch_touch(self, memory_ids: list[str]) -> None:
+        """Batch-update last_accessed_at and access_count in a single transaction."""
+        if not memory_ids:
+            return
+        db = self._ensure_open()
+        async with self._write_lock:
+            now = _dt_to_str(_utcnow())
+            placeholders = ",".join("?" for _ in memory_ids)
+            await db.execute(
+                f"UPDATE memories SET last_accessed_at = ?,"
+                f" access_count = access_count + 1"
+                f" WHERE id IN ({placeholders})",
+                [now, *memory_ids],
+            )
+            await db.commit()
+            for mid in memory_ids:
+                self._cache_invalidate(mid)
 
     async def delete(self, memory_id: str, hard: bool = False) -> bool:
         db = self._ensure_open()
@@ -830,43 +855,58 @@ class SQLiteMemoryStore(BaseMemoryStore):
         db = self._ensure_open()
         async with self._write_lock:
             now = _dt_to_str(_utcnow())
-            cursor = await db.execute(
-                """UPDATE memories
-                   SET status = ?, updated_at = ?
+            # Identify affected IDs for precise cache invalidation
+            id_cursor = await db.execute(
+                """SELECT id FROM memories
                    WHERE expires_at IS NOT NULL
                      AND expires_at <= ?
                      AND status = ?""",
-                (
-                    MemoryStatus.EXPIRED.value,
-                    now,
-                    now,
-                    MemoryStatus.ACTIVE.value,
-                ),
+                (now, MemoryStatus.ACTIVE.value),
+            )
+            affected_rows = await id_cursor.fetchall()
+            affected_ids = [row["id"] for row in affected_rows]
+
+            if not affected_ids:
+                return 0
+
+            placeholders = ",".join("?" for _ in affected_ids)
+            await db.execute(
+                f"UPDATE memories SET status = ?, updated_at = ? WHERE id IN ({placeholders})",
+                [MemoryStatus.EXPIRED.value, now, *affected_ids],
             )
             await db.commit()
-            self._cache_clear()  # Bulk status change — clear cache
-            return cursor.rowcount  # type: ignore[return-value]
+            for mid in affected_ids:
+                self._cache_invalidate(mid)
+            return len(affected_ids)
 
     async def archive_inactive(self, max_age_days: int) -> int:
         db = self._ensure_open()
         async with self._write_lock:
             now = _utcnow()
             cutoff = _dt_to_str(now - timedelta(days=max_age_days))
-            cursor = await db.execute(
-                """UPDATE memories
-                   SET status = ?, updated_at = ?
+            now_str = _dt_to_str(now)
+            # Identify affected IDs for precise cache invalidation
+            id_cursor = await db.execute(
+                """SELECT id FROM memories
                    WHERE last_accessed_at < ?
                      AND status = ?""",
-                (
-                    MemoryStatus.ARCHIVED.value,
-                    _dt_to_str(now),
-                    cutoff,
-                    MemoryStatus.ACTIVE.value,
-                ),
+                (cutoff, MemoryStatus.ACTIVE.value),
+            )
+            affected_rows = await id_cursor.fetchall()
+            affected_ids = [row["id"] for row in affected_rows]
+
+            if not affected_ids:
+                return 0
+
+            placeholders = ",".join("?" for _ in affected_ids)
+            await db.execute(
+                f"UPDATE memories SET status = ?, updated_at = ? WHERE id IN ({placeholders})",
+                [MemoryStatus.ARCHIVED.value, now_str, *affected_ids],
             )
             await db.commit()
-            self._cache_clear()  # Bulk status change — clear cache
-            return cursor.rowcount  # type: ignore[return-value]
+            for mid in affected_ids:
+                self._cache_invalidate(mid)
+            return len(affected_ids)
 
     async def get_versions(self, memory_id: str) -> list[MemoryVersion]:
         db = self._ensure_open()
@@ -890,6 +930,11 @@ class SQLiteMemoryStore(BaseMemoryStore):
         ]
 
     async def stats(self) -> StoreStats:
+        # TTL cache — avoid repeated full-table aggregation
+        now = time.monotonic()
+        if self._stats_cache is not None and (now - self._stats_cache_time) < self._stats_cache_ttl:
+            return self._stats_cache
+
         db = self._ensure_open()
 
         # Single aggregation query instead of 7 separate COUNT(*)s
@@ -906,7 +951,7 @@ class SQLiteMemoryStore(BaseMemoryStore):
         )
         row = await cursor.fetchone()
 
-        return StoreStats(
+        result = StoreStats(
             total_memories=row[0] or 0,
             active_memories=row[1] or 0,
             archived_memories=row[2] or 0,
@@ -917,6 +962,44 @@ class SQLiteMemoryStore(BaseMemoryStore):
             embedding_dimensions=self._dimension,
             store_backend="sqlite",
         )
+        self._stats_cache = result
+        self._stats_cache_time = time.monotonic()
+        return result
+
+    async def namespace_stats(
+        self, namespace: str | None = None
+    ) -> dict[str, object]:
+        """Efficient namespace statistics via SQL aggregation."""
+        db = self._ensure_open()
+
+        if namespace is not None:
+            cursor = await db.execute(
+                "SELECT memory_type, COUNT(*) FROM memories"
+                " WHERE namespace = ? AND status = 'active'"
+                " GROUP BY memory_type",
+                (namespace,),
+            )
+            rows = await cursor.fetchall()
+            type_counts = {row[0]: row[1] for row in rows}
+            total = sum(type_counts.values())
+            return {
+                "namespace": namespace,
+                "total_memories": total,
+                "memory_types": type_counts,
+            }
+
+        cursor = await db.execute(
+            "SELECT namespace, COUNT(*) FROM memories"
+            " WHERE status = 'active'"
+            " GROUP BY namespace"
+        )
+        rows = await cursor.fetchall()
+        ns_counts = {row[0]: row[1] for row in rows}
+        return {
+            "namespaces": ns_counts,
+            "total_namespaces": len(ns_counts),
+            "total_memories": sum(ns_counts.values()),
+        }
 
     async def schema_version(self) -> int:
         """Return the current schema version of the database."""

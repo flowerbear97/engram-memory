@@ -43,6 +43,17 @@ from neuragram.store.base import BaseMemoryStore
 from neuragram.store.registry import create_store
 
 
+_SYNC_EXECUTOR: concurrent.futures.ThreadPoolExecutor | None = None
+
+
+def _get_sync_executor() -> concurrent.futures.ThreadPoolExecutor:
+    """Return a module-level singleton thread pool for sync→async bridging."""
+    global _SYNC_EXECUTOR
+    if _SYNC_EXECUTOR is None:
+        _SYNC_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    return _SYNC_EXECUTOR
+
+
 def _run_async(coro: Any) -> Any:
     """Run an async coroutine from synchronous code.
 
@@ -55,10 +66,9 @@ def _run_async(coro: Any) -> Any:
         loop = None
 
     if loop is not None and loop.is_running():
-        # Already in an event loop — run in a separate thread
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            future = pool.submit(asyncio.run, coro)
-            return future.result()
+        # Already in an event loop — run in a separate thread (reuse pool)
+        future = _get_sync_executor().submit(asyncio.run, coro)
+        return future.result()
     else:
         return asyncio.run(coro)
 
@@ -166,13 +176,20 @@ class AgentMemory:
         self._actor_id = actor_id
 
         self._initialized = False
+        self._init_lock: asyncio.Lock | None = None
 
     # ── Initialization ──────────────────────────────────────────────
 
     async def _ensure_initialized(self) -> None:
-        if not self._initialized:
-            await self._store.initialize()
-            self._initialized = True
+        if self._initialized:
+            return
+        # Lazily create lock (Python 3.9 compat — no event loop at __init__)
+        if self._init_lock is None:
+            self._init_lock = asyncio.Lock()
+        async with self._init_lock:
+            if not self._initialized:
+                await self._store.initialize()
+                self._initialized = True
 
     # ── Access Control Enforcement ─────────────────────────────────
 
@@ -603,7 +620,7 @@ class AgentMemory:
         from neuragram.processing.classifier import MemoryClassifier
         from neuragram.processing.conflict import ConflictDetector
 
-        # Step 1: Auto-classify
+        # Step 1: Auto-classify + compute embedding (in parallel when possible)
         memory_type = MemoryType.FACT
         importance = 0.5
         confidence = 1.0
@@ -611,14 +628,17 @@ class AgentMemory:
 
         if auto_classify:
             classifier = MemoryClassifier(llm_provider=self._llm)
-            classification = await classifier.classify(content)
+            # Run classification and embedding concurrently
+            classification, embedding = await asyncio.gather(
+                classifier.classify(content),
+                self._embedder.embed_text(content),
+            )
             memory_type = classification.memory_type
             importance = classification.importance
             confidence = classification.confidence
             tags = classification.tags
-
-        # Step 2: Compute embedding
-        embedding = await self._embedder.embed_text(content)
+        else:
+            embedding = await self._embedder.embed_text(content)
 
         # Step 3: Build memory
         memory = Memory(
@@ -722,7 +742,7 @@ class AgentMemory:
         for memory, embedding in zip(extraction.memories, embeddings):
             memory.embedding = embedding
 
-        # Step 3: Conflict detection and storage
+        # Step 3: Conflict detection (parallel) and storage (sequential)
         stored_ids: list[str] = []
         detector = ConflictDetector(
             store=self._store,
@@ -730,9 +750,12 @@ class AgentMemory:
             llm_provider=self._llm,
         ) if detect_conflicts else None
 
-        for memory in extraction.memories:
-            if detector is not None:
-                conflicts = await detector.detect(memory)
+        if detector is not None:
+            # Run all conflict detections in parallel
+            all_conflicts = await asyncio.gather(
+                *(detector.detect(m) for m in extraction.memories)
+            )
+            for memory, conflicts in zip(extraction.memories, all_conflicts):
                 if conflicts:
                     resolution = await detector.resolve(memory, conflicts)
                     if resolution.resulting_memory is None:
@@ -740,9 +763,12 @@ class AgentMemory:
                     memory = resolution.resulting_memory
                     if memory.embedding is None:
                         memory.embedding = await self._embedder.embed_text(memory.content)
-
-            memory_id = await self._store.insert(memory)
-            stored_ids.append(memory_id)
+                memory_id = await self._store.insert(memory)
+                stored_ids.append(memory_id)
+        else:
+            for memory in extraction.memories:
+                memory_id = await self._store.insert(memory)
+                stored_ids.append(memory_id)
 
         return stored_ids
 
@@ -971,48 +997,13 @@ class AgentMemory:
         await self._ensure_initialized()
         self._enforce(AccessLevel.READ, "namespace_stats", namespace=namespace)
 
-        if namespace is not None:
-            filters = MemoryFilter(namespace=namespace)
-            await self._store.list_memories(filters, limit=0)
-            active_filters = MemoryFilter(
-                namespace=namespace,
-                statuses=[MemoryStatus.ACTIVE],
-            )
-            active = await self._store.list_memories(active_filters, limit=10000)
-            return {
-                "namespace": namespace,
-                "total_memories": len(active),
-                "memory_types": self._count_types(active),
-            }
-
-        # All namespaces: get overall stats and list unique namespaces
-        all_memories = await self._store.list_memories(
-            MemoryFilter(statuses=[MemoryStatus.ACTIVE]),
-            limit=10000,
-        )
-        namespaces: dict[str, int] = {}
-        for mem in all_memories:
-            ns = mem.namespace
-            namespaces[ns] = namespaces.get(ns, 0) + 1
-
-        return {
-            "namespaces": namespaces,
-            "total_namespaces": len(namespaces),
-            "total_memories": len(all_memories),
-        }
+        # Delegate to store's SQL-optimized implementation
+        result = await self._store.namespace_stats(namespace)
+        return dict(result)
 
     def namespace_stats(self, **kwargs: Any) -> dict[str, Any]:
         """Get namespace statistics (sync). See ``anamespace_stats``."""
         return _run_async(self.anamespace_stats(**kwargs))
-
-    @staticmethod
-    def _count_types(memories: list[Memory]) -> dict[str, int]:
-        """Count memories by type."""
-        counts: dict[str, int] = {}
-        for mem in memories:
-            type_name = mem.memory_type.value
-            counts[type_name] = counts.get(type_name, 0) + 1
-        return counts
 
     # ── Repr ────────────────────────────────────────────────────────
 

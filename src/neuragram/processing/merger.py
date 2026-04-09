@@ -28,6 +28,7 @@ from neuragram.core.filters import MemoryFilter
 from neuragram.core.models import Memory, MemoryType
 from neuragram.processing.embeddings import BaseEmbeddingProvider, NullEmbeddingProvider
 from neuragram.processing.llm import BaseLLMProvider, LLMError
+from neuragram.retrieval.scoring import cosine_similarity
 from neuragram.store.base import BaseMemoryStore
 
 _SUMMARIZE_PROMPT = """You are a memory summarization engine. Given a group of related memories, create a single concise summary that captures all important information.
@@ -135,8 +136,6 @@ class MemoryMerger:
         max_group_size: int,
     ) -> list[MergeGroup]:
         """Group memories by embedding cosine similarity."""
-        import math
-
         # Compute embeddings for all memories
         texts = [m.content for m in memories]
         embeddings = await self._embedder.embed_batch(texts)
@@ -158,7 +157,7 @@ class MemoryMerger:
                 if len(group.memories) >= max_group_size:
                     break
 
-                sim = self._cosine_similarity(embeddings[i], embeddings[j])
+                sim = cosine_similarity(embeddings[i], embeddings[j])
                 if sim >= threshold:
                     group.memories.append(memories[j])
                     group.similarity_scores.append(sim)
@@ -339,6 +338,8 @@ class MemoryMerger:
         )
 
         results: list[MergeResult] = []
+        all_delete_ids: list[str] = []
+
         for group in groups:
             result = await self.merge_group(
                 group,
@@ -346,27 +347,17 @@ class MemoryMerger:
                 namespace=namespace or "default",
             )
 
-            # Store the summary and soft-delete originals
+            # Store the summary and collect IDs for batch deletion
             if result.summary_memory is not None:
                 embedding = await self._embedder.embed_text(result.summary_memory.content)
                 result.summary_memory.embedding = embedding
                 await self._store.insert(result.summary_memory)
-
-                for old_id in result.merged_ids:
-                    await self._store.delete(old_id, hard=False)
+                all_delete_ids.extend(result.merged_ids)
 
             results.append(result)
 
+        # Batch soft-delete all merged originals
+        for old_id in all_delete_ids:
+            await self._store.delete(old_id, hard=False)
+
         return results
-
-    @staticmethod
-    def _cosine_similarity(vec_a: list[float], vec_b: list[float]) -> float:
-        """Compute cosine similarity between two vectors."""
-        import math
-
-        dot_product = sum(a * b for a, b in zip(vec_a, vec_b))
-        norm_a = math.sqrt(sum(a * a for a in vec_a))
-        norm_b = math.sqrt(sum(b * b for b in vec_b))
-        if norm_a == 0 or norm_b == 0:
-            return 0.0
-        return dot_product / (norm_a * norm_b)

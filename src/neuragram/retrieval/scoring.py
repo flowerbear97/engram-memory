@@ -11,7 +11,7 @@ from __future__ import annotations
 import math
 from datetime import datetime, timezone
 
-from neuragram.core.models import ScoredMemory
+from neuragram.core.models import Memory, ScoredMemory
 
 
 def reciprocal_rank_fusion(
@@ -147,8 +147,6 @@ def _content_similarity(memory_a: object, memory_b: object) -> float:
     Prefers cosine similarity of embeddings when available;
     falls back to Jaccard similarity of content tokens.
     """
-    from neuragram.core.models import Memory
-
     if not isinstance(memory_a, Memory) or not isinstance(memory_b, Memory):
         return 0.0
 
@@ -174,11 +172,22 @@ def _content_similarity(memory_a: object, memory_b: object) -> float:
     return len(intersection) / len(union)
 
 
-def _cosine_similarity(vec_a: list[float], vec_b: list[float]) -> float:
-    """Compute cosine similarity between two vectors."""
-    dot_product = sum(a * b for a, b in zip(vec_a, vec_b))
-    norm_a = math.sqrt(sum(a * a for a in vec_a))
-    norm_b = math.sqrt(sum(b * b for b in vec_b))
-    if norm_a == 0 or norm_b == 0:
+def cosine_similarity(vec_a: list[float], vec_b: list[float]) -> float:
+    """Compute cosine similarity between two vectors.
+
+    Public so it can be shared across modules (retrieval + merger).
+    """
+    dot_product = 0.0
+    norm_a_sq = 0.0
+    norm_b_sq = 0.0
+    for a, b in zip(vec_a, vec_b):
+        dot_product += a * b
+        norm_a_sq += a * a
+        norm_b_sq += b * b
+    if norm_a_sq == 0 or norm_b_sq == 0:
         return 0.0
-    return dot_product / (norm_a * norm_b)
+    return dot_product / (math.sqrt(norm_a_sq) * math.sqrt(norm_b_sq))
+
+
+# Keep old name as alias for internal callers
+_cosine_similarity = cosine_similarity
