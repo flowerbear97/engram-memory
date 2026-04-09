@@ -38,9 +38,9 @@ src/neuragram/
 ├── client.py              # AgentMemory — main entry point (Facade pattern)
 ├── core/
 │   ├── models.py          # Memory, ScoredMemory, MemoryType, MemoryStatus, ScoreExplanation
-│   ├── config.py          # EngramConfig dataclass with validation
+│   ├── config.py          # NeuragramConfig dataclass with validation
 │   ├── filters.py         # MemoryFilter for query scoping
-│   ├── exceptions.py      # Exception hierarchy (EngramError base)
+│   ├── exceptions.py      # Exception hierarchy (NeuragramError base)
 │   ├── access.py          # RBAC: AccessPolicy, AccessLevel (NONE/READ/WRITE/ADMIN)
 │   └── telemetry.py       # OpenTelemetry with No-Op fallback pattern
 ├── store/
@@ -62,8 +62,8 @@ src/neuragram/
 │   ├── forgetting.py      # ForgettingManager — GDPR-compliant deletion (soft/hard)
 │   └── worker.py          # LifecycleWorker — background asyncio.Task for periodic maintenance
 ├── integrations/
-│   ├── langchain.py       # EngramMemory(BaseMemory) adapter
-│   └── llamaindex.py      # EngramChatMemory adapter
+│   ├── langchain.py       # NeuragramMemory(BaseMemory) adapter
+│   └── llamaindex.py      # NeuragramChatMemory adapter
 └── server/
     ├── mcp.py             # FastMCP server — 6 tools (remember, recall, smart_remember, forget, list, stats)
     └── api.py             # FastAPI server — 11 RESTful endpoints
@@ -98,7 +98,7 @@ src/neuragram/
 
 - Store uses WAL mode, 64MB page cache, 256MB mmap for performance (`store/sqlite.py`)
 - LRU cache (OrderedDict, size 256) for `get()` hot path; invalidated on update/delete
-- RRF fusion with default weights: vector 0.5 / keyword 0.3 / recency 0.2 (configurable via `EngramConfig`)
+- RRF fusion with default weights: vector 0.5 / keyword 0.3 / recency 0.2 (configurable via `NeuragramConfig`)
 - Recency boost uses exponential decay with 7-day half-life
 - `search()` auto-touches accessed memories, creating a "use it or lose it" reinforcement effect
 - `complete_json()` auto-strips markdown code fences from LLM responses

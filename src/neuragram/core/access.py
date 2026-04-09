@@ -27,10 +27,10 @@ from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import Any
 
-from neuragram.core.exceptions import EngramError
+from neuragram.core.exceptions import NeuragramError
 
 
-class AccessDeniedError(EngramError):
+class AccessDeniedError(NeuragramError):
     """Raised when an operation is denied by access control."""
 
     def __init__(self, actor: str, operation: str, reason: str = "") -> None:

@@ -1,4 +1,4 @@
-"""Production-readiness tests for Engram.
+"""Production-readiness tests for Neuragram.
 
 Covers edge cases and production scenarios beyond the happy-path tests:
 - Concurrent write safety (asyncio.Lock)

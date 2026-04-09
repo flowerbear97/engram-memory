@@ -15,12 +15,12 @@ Usage::
 """
 
 from neuragram.client import AgentMemory
-from neuragram.core.config import EngramConfig
+from neuragram.core.config import NeuragramConfig
 from neuragram.core.exceptions import (
     BackendNotAvailableError,
     ConfigError,
     EmbeddingError,
-    EngramError,
+    NeuragramError,
     MemoryNotFoundError,
     StoreError,
 )
@@ -71,9 +71,9 @@ __all__ = [
     "StoreStats",
     "ScoreExplanation",
     # Config
-    "EngramConfig",
+    "NeuragramConfig",
     # Exceptions
-    "EngramError",
+    "NeuragramError",
     "MemoryNotFoundError",
     "StoreError",
     "EmbeddingError",

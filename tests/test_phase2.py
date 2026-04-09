@@ -590,12 +590,12 @@ async def test_process_conversation(smart_memory):
 @pytest.mark.asyncio
 async def test_process_conversation_requires_llm(tmp_path):
     """process_conversation raises error without LLM."""
-    from neuragram.core.exceptions import EngramError
+    from neuragram.core.exceptions import NeuragramError
 
     mem = AgentMemory(db_path=str(tmp_path / "no_llm2.db"))
     await mem._ensure_initialized()
 
-    with pytest.raises(EngramError, match="requires an LLM provider"):
+    with pytest.raises(NeuragramError, match="requires an LLM provider"):
         await mem.aprocess_conversation(
             messages=[{"role": "user", "content": "test"}]
         )

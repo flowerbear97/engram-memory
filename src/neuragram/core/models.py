@@ -1,4 +1,4 @@
-"""Core data models for Engram memory system."""
+"""Core data models for Neuragram memory system."""
 
 from __future__ import annotations
 

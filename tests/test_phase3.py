@@ -147,10 +147,10 @@ def test_rest_api_creation_without_fastapi():
 
 @pytest.mark.asyncio
 async def test_langchain_adapter_save_and_load(tmp_path):
-    """EngramMemory saves context and loads relevant memories."""
-    from neuragram.integrations.langchain import EngramMemory
+    """NeuragramMemory saves context and loads relevant memories."""
+    from neuragram.integrations.langchain import NeuragramMemory
 
-    memory = EngramMemory(
+    memory = NeuragramMemory(
         db_path=str(tmp_path / "langchain_test.db"),
         user_id="u1",
         memory_key="history",
@@ -173,10 +173,10 @@ async def test_langchain_adapter_save_and_load(tmp_path):
 
 @pytest.mark.asyncio
 async def test_langchain_adapter_memory_variables(tmp_path):
-    """EngramMemory exposes correct memory_variables."""
-    from neuragram.integrations.langchain import EngramMemory
+    """NeuragramMemory exposes correct memory_variables."""
+    from neuragram.integrations.langchain import NeuragramMemory
 
-    memory = EngramMemory(
+    memory = NeuragramMemory(
         db_path=str(tmp_path / "langchain_test2.db"),
         memory_key="context",
     )
@@ -186,10 +186,10 @@ async def test_langchain_adapter_memory_variables(tmp_path):
 
 @pytest.mark.asyncio
 async def test_langchain_adapter_clear(tmp_path):
-    """EngramMemory.clear() removes user memories."""
-    from neuragram.integrations.langchain import EngramMemory
+    """NeuragramMemory.clear() removes user memories."""
+    from neuragram.integrations.langchain import NeuragramMemory
 
-    memory = EngramMemory(
+    memory = NeuragramMemory(
         db_path=str(tmp_path / "langchain_test3.db"),
         user_id="u1",
     )
@@ -212,10 +212,10 @@ async def test_langchain_adapter_clear(tmp_path):
 @skip_no_fts5
 @pytest.mark.asyncio
 async def test_llamaindex_adapter_put_and_get(tmp_path):
-    """EngramChatMemory stores and retrieves memories."""
-    from neuragram.integrations.llamaindex import EngramChatMemory
+    """NeuragramChatMemory stores and retrieves memories."""
+    from neuragram.integrations.llamaindex import NeuragramChatMemory
 
-    memory = EngramChatMemory(
+    memory = NeuragramChatMemory(
         db_path=str(tmp_path / "llamaindex_test.db"),
         user_id="u1",
     )
@@ -232,10 +232,10 @@ async def test_llamaindex_adapter_put_and_get(tmp_path):
 
 @pytest.mark.asyncio
 async def test_llamaindex_adapter_get_all(tmp_path):
-    """EngramChatMemory.get_all() returns all memories."""
-    from neuragram.integrations.llamaindex import EngramChatMemory
+    """NeuragramChatMemory.get_all() returns all memories."""
+    from neuragram.integrations.llamaindex import NeuragramChatMemory
 
-    memory = EngramChatMemory(
+    memory = NeuragramChatMemory(
         db_path=str(tmp_path / "llamaindex_test2.db"),
         user_id="u1",
     )
@@ -251,10 +251,10 @@ async def test_llamaindex_adapter_get_all(tmp_path):
 
 @pytest.mark.asyncio
 async def test_llamaindex_adapter_smart_put(tmp_path):
-    """EngramChatMemory.smart_put() auto-classifies."""
-    from neuragram.integrations.llamaindex import EngramChatMemory
+    """NeuragramChatMemory.smart_put() auto-classifies."""
+    from neuragram.integrations.llamaindex import NeuragramChatMemory
 
-    memory = EngramChatMemory(
+    memory = NeuragramChatMemory(
         db_path=str(tmp_path / "llamaindex_test3.db"),
         user_id="u1",
     )
@@ -267,10 +267,10 @@ async def test_llamaindex_adapter_smart_put(tmp_path):
 
 @pytest.mark.asyncio
 async def test_llamaindex_adapter_reset(tmp_path):
-    """EngramChatMemory.reset() clears user memories."""
-    from neuragram.integrations.llamaindex import EngramChatMemory
+    """NeuragramChatMemory.reset() clears user memories."""
+    from neuragram.integrations.llamaindex import NeuragramChatMemory
 
-    memory = EngramChatMemory(
+    memory = NeuragramChatMemory(
         db_path=str(tmp_path / "llamaindex_test4.db"),
         user_id="u1",
     )

@@ -10,7 +10,7 @@ readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.9"
 authors = [
-    { name = "Engram Team", email = "upbeat_2026@qq.com" },
+    { name = "Neuragram Team", email = "upbeat_2026@qq.com" },
 ]
 keywords = ["agent", "memory", "llm", "ai", "vector-search", "rag"]
 classifiers = [

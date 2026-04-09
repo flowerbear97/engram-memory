@@ -1,14 +1,14 @@
-"""LangChain integration for Engram.
+"""LangChain integration for Neuragram.
 
 Provides an adapter that implements LangChain's BaseMemory interface,
-allowing Engram to be used as a drop-in memory backend for LangChain
+allowing Neuragram to be used as a drop-in memory backend for LangChain
 chains and agents.
 
 Usage::
 
-    from neuragram.integrations.langchain import EngramMemory
+    from neuragram.integrations.langchain import NeuragramMemory
 
-    memory = EngramMemory(db_path="./memory.db", user_id="u1")
+    memory = NeuragramMemory(db_path="./memory.db", user_id="u1")
 
     # Use with LangChain
     from langchain.chains import ConversationChain
@@ -22,8 +22,8 @@ from __future__ import annotations
 from typing import Any
 
 
-class EngramMemory:
-    """LangChain-compatible memory backed by Engram.
+class NeuragramMemory:
+    """LangChain-compatible memory backed by Neuragram.
 
     Implements the LangChain BaseMemory interface pattern:
     - memory_variables: list of output keys

@@ -18,10 +18,10 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Callable, Awaitable
 
-from neuragram.core.exceptions import BackendNotAvailableError, EngramError
+from neuragram.core.exceptions import BackendNotAvailableError, NeuragramError
 
 
-class LLMError(EngramError):
+class LLMError(NeuragramError):
     """Raised when an LLM call fails."""
 
 

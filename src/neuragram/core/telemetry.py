@@ -1,6 +1,6 @@
-"""OpenTelemetry integration for Engram observability.
+"""OpenTelemetry integration for Neuragram observability.
 
-Provides automatic instrumentation of Engram operations with
+Provides automatic instrumentation of Neuragram operations with
 traces, spans, and metrics. When OpenTelemetry is not installed,
 all instrumentation is silently no-op.
 
@@ -149,12 +149,12 @@ _meter = get_meter("neuragram")
 # Metrics
 operation_counter = _meter.create_counter(
     "neuragram.operations.count",
-    description="Number of Engram operations by type",
+    description="Number of Neuragram operations by type",
 )
 
 operation_duration = _meter.create_histogram(
     "neuragram.operations.duration",
-    description="Duration of Engram operations in seconds",
+    description="Duration of Neuragram operations in seconds",
 )
 
 recall_results_histogram = _meter.create_histogram(

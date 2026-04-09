@@ -1,4 +1,4 @@
-"""AgentMemory — the primary public API for Engram.
+"""AgentMemory — the primary public API for Neuragram.
 
 This is the single entry point that users interact with. It assembles
 all internal components (store, embedding, retrieval, lifecycle) and
@@ -21,7 +21,7 @@ from datetime import datetime
 from typing import Any
 
 from neuragram.core.access import AccessLevel, AccessPolicy
-from neuragram.core.config import EngramConfig
+from neuragram.core.config import NeuragramConfig
 from neuragram.core.filters import MemoryFilter
 from neuragram.core.models import (
     Memory,
@@ -74,7 +74,7 @@ def _run_async(coro: Any) -> Any:
 
 
 class AgentMemory:
-    """The primary interface to Engram's memory system.
+    """The primary interface to Neuragram's memory system.
 
     Provides both synchronous and async (``a``-prefixed) methods.
 
@@ -84,7 +84,7 @@ class AgentMemory:
         embedding: Embedding provider name ("none", "local", "openai") or instance.
         embedding_model: Model identifier for the embedding provider.
         embedding_dimension: Vector dimensionality.
-        config: Full EngramConfig (overrides individual params if provided).
+        config: Full NeuragramConfig (overrides individual params if provided).
         **kwargs: Additional options passed to config / providers.
     """
 
@@ -99,14 +99,14 @@ class AgentMemory:
         llm_model: str = "",
         access_policy: AccessPolicy | None = None,
         actor_id: str = "",
-        config: EngramConfig | None = None,
+        config: NeuragramConfig | None = None,
         **kwargs: Any,
     ) -> None:
         # Build config
         if config is not None:
             self._config = config
         else:
-            self._config = EngramConfig(
+            self._config = NeuragramConfig(
                 store=store if isinstance(store, str) else "sqlite",
                 db_path=db_path,
                 embedding=embedding if isinstance(embedding, str) else "none",
@@ -115,7 +115,7 @@ class AgentMemory:
                 **{
                     k: v
                     for k, v in kwargs.items()
-                    if k in EngramConfig.__dataclass_fields__
+                    if k in NeuragramConfig.__dataclass_fields__
                 },
             )
         self._config.validate()
@@ -705,7 +705,7 @@ class AgentMemory:
             List of stored memory IDs.
 
         Raises:
-            EngramError: If no LLM provider is configured.
+            NeuragramError: If no LLM provider is configured.
         """
         await self._ensure_initialized()
         self._enforce(
@@ -714,9 +714,9 @@ class AgentMemory:
         )
 
         if self._llm is None:
-            from neuragram.core.exceptions import EngramError
+            from neuragram.core.exceptions import NeuragramError
 
-            raise EngramError(
+            raise NeuragramError(
                 "process_conversation() requires an LLM provider. "
                 "Initialize with llm='openai' or llm='ollama'."
             )

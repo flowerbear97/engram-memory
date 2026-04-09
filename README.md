@@ -1,4 +1,4 @@
-## Engram
+## Neuragram
 
 **English** | [中文](README_CN.md)
 
@@ -20,7 +20,7 @@ mem.close()
 
 ## Comparison
 
-| | Engram | Mem0 | Letta | Graphiti |
+| | Neuragram | Mem0 | Letta | Graphiti |
 |---|---|---|---|---|
 | Install | `pip install neuragram` | `pip install` | Docker + Server | pip + Neo4j |
 | External Deps | None | Vector DB + LLM | PG + Server + LLM | Graph DB + LLM |
@@ -56,10 +56,10 @@ mem.close()
 
 ### Integrations
 - **Claude Code** — available as a Claude Code plugin via marketplace or manual MCP setup
-- **MCP Server** — `neuragram-mcp` CLI exposes Engram as an MCP tool server (Claude Desktop, Cursor, etc.)
+- **MCP Server** — `neuragram-mcp` CLI exposes Neuragram as an MCP tool server (Claude Desktop, Cursor, etc.)
 - **REST API** — `neuragram-api` CLI starts a FastAPI HTTP service with 12 endpoints
-- **LangChain** — `EngramMemory` implements `BaseMemory` (save_context / load_memory_variables)
-- **LlamaIndex** — `EngramChatMemory` provides put / get / get_all / reset
+- **LangChain** — `NeuragramMemory` implements `BaseMemory` (save_context / load_memory_variables)
+- **LlamaIndex** — `NeuragramChatMemory` provides put / get / get_all / reset
 
 ### Observability
 - **OpenTelemetry** — automatic traces, metrics, and spans for all operations; zero-overhead no-op when OTel is not installed
@@ -125,9 +125,9 @@ neuragram-api --db-path ./memory.db --port 8080
 ### LangChain
 
 ```python
-from neuragram.integrations.langchain import EngramMemory
+from neuragram.integrations.langchain import NeuragramMemory
 
-memory = EngramMemory(db_path="./memory.db", user_id="u1")
+memory = NeuragramMemory(db_path="./memory.db", user_id="u1")
 memory.save_context({"input": "I prefer concise answers"}, {"output": "Got it!"})
 result = memory.load_memory_variables({"input": "answer style"})
 ```
@@ -135,9 +135,9 @@ result = memory.load_memory_variables({"input": "answer style"})
 ### LlamaIndex
 
 ```python
-from neuragram.integrations.llamaindex import EngramChatMemory
+from neuragram.integrations.llamaindex import NeuragramChatMemory
 
-memory = EngramChatMemory(db_path="./memory.db", user_id="u1")
+memory = NeuragramChatMemory(db_path="./memory.db", user_id="u1")
 memory.put("User is a Python developer", memory_type="fact")
 results = memory.get("programming language")
 ```

@@ -1,6 +1,6 @@
-"""Engram REST API — FastAPI-based HTTP service.
+"""Neuragram REST API — FastAPI-based HTTP service.
 
-Provides a RESTful HTTP API for Engram's memory operations,
+Provides a RESTful HTTP API for Neuragram's memory operations,
 enabling language-agnostic access and independent deployment.
 
 Endpoints:
@@ -42,7 +42,7 @@ def create_app(
     llm_model: str = "",
     **kwargs: Any,
 ) -> Any:
-    """Create a FastAPI application with Engram endpoints.
+    """Create a FastAPI application with Neuragram endpoints.
 
     Args:
         db_path: SQLite database path.
@@ -64,11 +64,11 @@ def create_app(
         ) from exc
 
     from neuragram.client import AgentMemory
-    from neuragram.core.exceptions import EngramError, MemoryNotFoundError
+    from neuragram.core.exceptions import NeuragramError, MemoryNotFoundError
 
     app = FastAPI(
-        title="Engram Memory API",
-        description="RESTful API for Engram agent memory system",
+        title="Neuragram Memory API",
+        description="RESTful API for Neuragram agent memory system",
         version="0.3.0",
     )
 
@@ -313,7 +313,7 @@ def create_app(
                 namespace=request.namespace,
             )
             return {"memory_ids": ids, "count": len(ids), "status": "processed"}
-        except EngramError as exc:
+        except NeuragramError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
 
     @app.post("/memories/consolidate")
@@ -348,10 +348,10 @@ def create_app(
 
 
 def main() -> None:
-    """Entry point for running Engram REST API server."""
+    """Entry point for running Neuragram REST API server."""
     import argparse
 
-    parser = argparse.ArgumentParser(description="Engram REST API Server")
+    parser = argparse.ArgumentParser(description="Neuragram REST API Server")
     parser.add_argument("--db-path", default="./neuragram.db", help="SQLite database path")
     parser.add_argument("--embedding", default="none", help="Embedding provider")
     parser.add_argument("--embedding-model", default="", help="Embedding model name")

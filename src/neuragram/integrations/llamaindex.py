@@ -1,14 +1,14 @@
-"""LlamaIndex integration for Engram.
+"""LlamaIndex integration for Neuragram.
 
 Provides an adapter that works with LlamaIndex's memory abstractions,
-allowing Engram to serve as a persistent memory store for LlamaIndex
+allowing Neuragram to serve as a persistent memory store for LlamaIndex
 agents and chat engines.
 
 Usage::
 
-    from neuragram.integrations.llamaindex import EngramChatMemory
+    from neuragram.integrations.llamaindex import NeuragramChatMemory
 
-    memory = EngramChatMemory(db_path="./memory.db", user_id="u1")
+    memory = NeuragramChatMemory(db_path="./memory.db", user_id="u1")
 
     # Get relevant context for a query
     context = memory.get("What does the user prefer?")
@@ -24,8 +24,8 @@ from __future__ import annotations
 from typing import Any
 
 
-class EngramChatMemory:
-    """LlamaIndex-compatible chat memory backed by Engram.
+class NeuragramChatMemory:
+    """LlamaIndex-compatible chat memory backed by Neuragram.
 
     Provides a simple get/put interface that maps to LlamaIndex's
     memory patterns for chat engines and agents.

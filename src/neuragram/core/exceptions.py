@@ -1,11 +1,11 @@
-"""Engram exception hierarchy."""
+"""Neuragram exception hierarchy."""
 
 
-class EngramError(Exception):
-    """Base exception for all Engram errors."""
+class NeuragramError(Exception):
+    """Base exception for all Neuragram errors."""
 
 
-class MemoryNotFoundError(EngramError):
+class MemoryNotFoundError(NeuragramError):
     """Raised when a memory with the given ID does not exist."""
 
     def __init__(self, memory_id: str) -> None:
@@ -13,19 +13,19 @@ class MemoryNotFoundError(EngramError):
         super().__init__(f"Memory not found: {memory_id}")
 
 
-class StoreError(EngramError):
+class StoreError(NeuragramError):
     """Raised when a storage backend operation fails."""
 
 
-class EmbeddingError(EngramError):
+class EmbeddingError(NeuragramError):
     """Raised when an embedding operation fails."""
 
 
-class ConfigError(EngramError):
+class ConfigError(NeuragramError):
     """Raised when configuration is invalid."""
 
 
-class BackendNotAvailableError(EngramError):
+class BackendNotAvailableError(NeuragramError):
     """Raised when a requested storage backend is not installed or available."""
 
     def __init__(self, backend: str, reason: str = "") -> None:

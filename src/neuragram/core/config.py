@@ -1,4 +1,4 @@
-"""Engram configuration."""
+"""Neuragram configuration."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from .exceptions import ConfigError
 
 
 @dataclass
-class EngramConfig:
-    """Central configuration for an Engram instance.
+class NeuragramConfig:
+    """Central configuration for an Neuragram instance.
 
     Attributes:
         store: Storage backend name ("sqlite", "postgres", etc.).
@@ -75,7 +75,7 @@ class EngramConfig:
             raise ConfigError("dedup_threshold must be in [0, 1]")
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> EngramConfig:
+    def from_dict(cls, data: dict[str, Any]) -> NeuragramConfig:
         """Create config from a dictionary, ignoring unknown keys."""
         known_fields = {f.name for f in cls.__dataclass_fields__.values()}  # type: ignore[attr-defined]
         filtered = {k: v for k, v in data.items() if k in known_fields}

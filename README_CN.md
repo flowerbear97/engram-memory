@@ -1,4 +1,4 @@
-## Engram
+## Neuragram
 
 [English](README.md) | **中文**
 
@@ -20,7 +20,7 @@ mem.close()
 
 ## 对比
 
-| | Engram | Mem0 | Letta | Graphiti |
+| | Neuragram | Mem0 | Letta | Graphiti |
 |---|---|---|---|---|
 | 安装方式 | `pip install neuragram` | `pip install` | Docker + Server | pip + Neo4j |
 | 外部依赖 | 无 | 向量数据库 + LLM | PG + Server + LLM | 图数据库 + LLM |
@@ -56,10 +56,10 @@ mem.close()
 
 ### 集成
 - **Claude Code** — 支持通过插件市场或手动 MCP 配置接入 Claude Code
-- **MCP Server** — `neuragram-mcp` CLI 将 Engram 暴露为 MCP 工具服务器（Claude Desktop、Cursor 等）
+- **MCP Server** — `neuragram-mcp` CLI 将 Neuragram 暴露为 MCP 工具服务器（Claude Desktop、Cursor 等）
 - **REST API** — `neuragram-api` CLI 启动 FastAPI HTTP 服务，提供 12 个端点
-- **LangChain** — `EngramMemory` 实现 `BaseMemory`（save_context / load_memory_variables）
-- **LlamaIndex** — `EngramChatMemory` 提供 put / get / get_all / reset
+- **LangChain** — `NeuragramMemory` 实现 `BaseMemory`（save_context / load_memory_variables）
+- **LlamaIndex** — `NeuragramChatMemory` 提供 put / get / get_all / reset
 
 ### 可观测性
 - **OpenTelemetry** — 所有操作自动生成 traces、metrics 和 spans；未安装 OTel 时零开销
@@ -125,9 +125,9 @@ neuragram-api --db-path ./memory.db --port 8080
 ### LangChain
 
 ```python
-from neuragram.integrations.langchain import EngramMemory
+from neuragram.integrations.langchain import NeuragramMemory
 
-memory = EngramMemory(db_path="./memory.db", user_id="u1")
+memory = NeuragramMemory(db_path="./memory.db", user_id="u1")
 memory.save_context({"input": "我喜欢简洁的回答"}, {"output": "好的！"})
 result = memory.load_memory_variables({"input": "回答风格"})
 ```
@@ -135,9 +135,9 @@ result = memory.load_memory_variables({"input": "回答风格"})
 ### LlamaIndex
 
 ```python
-from neuragram.integrations.llamaindex import EngramChatMemory
+from neuragram.integrations.llamaindex import NeuragramChatMemory
 
-memory = EngramChatMemory(db_path="./memory.db", user_id="u1")
+memory = NeuragramChatMemory(db_path="./memory.db", user_id="u1")
 memory.put("用户是 Python 开发者", memory_type="fact")
 results = memory.get("编程语言")
 ```

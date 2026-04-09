@@ -3,7 +3,7 @@
   "name": "neuragram",
   "description": "Lightweight, framework-agnostic memory layer for AI agents — pip install neuragram. Hybrid search, smart classification, conflict detection, zero external dependencies",
   "owner": {
-    "name": "Engram Team",
+    "name": "Neuragram Team",
     "email": "upbeat_2026@qq.com"
   },
   "plugins": [
@@ -12,7 +12,7 @@
       "description": "Persistent memory for AI agents with hybrid vector + keyword search, auto-classification, conflict detection, and lifecycle management. Gives your agent a brain that survives across sessions.",
       "version": "1.0.0",
       "author": {
-        "name": "Engram Team"
+        "name": "Neuragram Team"
       },
       "source": "./src/neuragram/server/mcp.py",
       "category": "productivity",

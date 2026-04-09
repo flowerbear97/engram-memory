@@ -1,7 +1,7 @@
-"""Engram MCP Server — expose memory operations as MCP tools.
+"""Neuragram MCP Server — expose memory operations as MCP tools.
 
 This module implements a Model Context Protocol (MCP) server that allows
-AI assistants (Claude, Cursor, etc.) to directly interact with Engram's
+AI assistants (Claude, Cursor, etc.) to directly interact with Neuragram's
 memory system through standardized tool calls.
 
 Exposed tools:
@@ -37,10 +37,10 @@ def create_mcp_server(
     embedding_model: str = "",
     llm: str | None = None,
     llm_model: str = "",
-    server_name: str = "Engram Memory",
+    server_name: str = "Neuragram Memory",
     **kwargs: Any,
 ) -> Any:
-    """Create and configure an MCP server with Engram tools.
+    """Create and configure an MCP server with Neuragram tools.
 
     Args:
         db_path: SQLite database path.
@@ -91,7 +91,7 @@ def create_mcp_server(
         importance: float = 0.5,
         tags: str = "",
     ) -> str:
-        """Store a new memory in Engram.
+        """Store a new memory in Neuragram.
 
         Args:
             content: The text content to remember.
@@ -193,7 +193,7 @@ def create_mcp_server(
         user_id: str = "",
         hard: bool = False,
     ) -> str:
-        """Delete memories from Engram.
+        """Delete memories from Neuragram.
 
         Provide either memory_id (delete one) or user_id (delete all for user).
 
@@ -274,10 +274,10 @@ def create_mcp_server(
 
 
 def main() -> None:
-    """Entry point for running Engram as a standalone MCP server."""
+    """Entry point for running Neuragram as a standalone MCP server."""
     import argparse
 
-    parser = argparse.ArgumentParser(description="Engram MCP Server")
+    parser = argparse.ArgumentParser(description="Neuragram MCP Server")
     parser.add_argument("--db-path", default="./neuragram.db", help="SQLite database path")
     parser.add_argument("--embedding", default="none", help="Embedding provider")
     parser.add_argument("--embedding-model", default="", help="Embedding model name")

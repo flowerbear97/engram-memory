@@ -1,4 +1,4 @@
-"""Engram quickstart — 30 seconds to get started."""
+"""Neuragram quickstart — 30 seconds to get started."""
 import os
 from neuragram import AgentMemory
 

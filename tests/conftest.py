@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for Engram tests."""
+"""Shared pytest fixtures for Neuragram tests."""
 
 import sqlite3
 
